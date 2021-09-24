@@ -27,7 +27,7 @@ Audiences and creators know that on one level or another, there’s an inherent 
 
 # Setup 
 
-```{r setup}
+```{r setup, include = FALSE}
 
 #Install all required packages 
 #install.packages(c('tidyverse','tidytuesdayR', 'scales', 'rmarkdown'))
@@ -41,7 +41,7 @@ library(rmarkdown)
 
 
 #Setting the global options for Rmarkdown 
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
 
