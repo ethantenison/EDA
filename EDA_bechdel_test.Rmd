@@ -6,16 +6,6 @@ date: "9/22/2021"
 output: html_document
 ---
 
-Secuence of events:
-EDA! and a breakdown about what we're going to talk about 
-My background
-Basics of Eda
-TIDY DATA VOCAB
-TidyTuesday
-Bechdel Test
-Rmarkdown
-Datatypes
-
 # TidyTuesday 
 
 [TidyTuesday](https://github.com/rfordatascience/tidytuesday/blob/master/README.md) is weekly social data project aimed at the R ecosystem. This project was borne out of the R4DS Online Learning Community and the R for Data Science textbook, and an emphasis is placed on understanding how to summarize and arrange data to make meaningful charts with ggplot2, tidyr, dplyr, and other tools in the tidyverse ecosystem. 
@@ -23,12 +13,16 @@ Datatypes
 
 # The Bechdel Test 
 
-The Bechdel test is a measure of the representation of women in fiction, and it is specifically to address gender bias in film. It asks whether a work features at least two women who talk to each other about something other than a man.
+The [Bechdel test](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-03-09/readme.md#bechdel-test) is a measure of the representation of women in fiction, and it is specifically to address gender bias in film. It asks whether a work features at least two women who talk to each other about something other than a man.
 
 >
 Audiences and creators know that on one level or another, there’s an inherent gender bias in the movie business — whether it’s the disproportionately low number of films with female leads, the process of pigeonholing actresses into predefined roles (action chick, romantic interest, middle-aged mother, etc.), or the lack of serious character development for women on screen compared to their male counterparts. What’s challenging is quantifying this dysfunction, putting numbers to a trend that is — at least anecdotally — a pretty clear reality.
 >
 
+
+# Rmarkdown 
+
+[R Markdown](https://rmarkdown.rstudio.com/articles_intro.html) is a file format for making dynamic documents with R. An R Markdown document is written in markdown (an easy-to-write plain text format) and contains chunks of embedded R code, like the document below!
 
 
 # Setup 
@@ -36,13 +30,14 @@ Audiences and creators know that on one level or another, there’s an inherent 
 ```{r setup}
 
 #Install all required packages 
-#install.packages(c('tidyverse','tidytuesdayR', 'scales'))
+#install.packages(c('tidyverse','tidytuesdayR', 'scales', 'rmarkdown'))
 
 #Read in required packages 
 library(tidyverse)    #A collection of packages that use the same grammar and structure
 library(tidytuesdayR) #Download TidyTuesday directly using this api! 
 library(scales)       #To format your axes better 
 library(ggcorrplot)
+library(rmarkdown)
 
 
 #Setting the global options for Rmarkdown 
@@ -50,7 +45,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-### Reading the Data 
+# Reading the Data 
 
 
 ```{r reading_data}
@@ -72,6 +67,8 @@ The dataset includes about 1,800 movies assessed using 34 different variables in
 glimpse(movies)
 
 ```
+
+# Quick Summary 
 
 The `summary` function can be used to get quick summary statistics about a dataframe. It works best when assessing the summary statistics of numeric and factor data types. Apart from min, mean, and max, another really important statistic to look at is the number of NA values. This can be crucial to understand because often time you many need to filter these observations out, as many function will break if they're included. In this case, only a small fraction of movies contain NA values, approximately `r (200/1800)*100`%, so although we always want to make a note of this, it's safe to assume they won't drastically skew our results. 
 
@@ -120,28 +117,21 @@ ggplot(data = movies) +
   theme(
     plot.title = element_text(hjust = 0.5), # Title Position
     text = element_text(size = 16, # Font size and face 
-                        face = "bold"),
-    axis.title.y = element_text( #Axis label margins 
-      margin = margin(t = 0,r = 10,b = 0,l = 0)),
-    axis.title.x = element_text( #Axis label margins
-      margin = margin(t = 10,r = 0,b = 0,l = 0))
+                        face = "bold")
   )
 
 ```
+Now lets look at a full breakdown of the Bechdel Test results in the `clean_test` variable.
+
+```{r clean_test}
 
 
-It's your turn! Select a categorical variable (in this case your only option are character variables).
-
-```{r your_turn}
-
-
-#ggplot(data = movies) +
-#  geom_bar(mapping = aes(x = "Insert a column name here"))
+ggplot(data = movies) +
+  geom_bar(mapping = aes(x = clean_test))
 
 
 ```
 
-Now lets look at a full breakdown of the Bechdel Test results in the `clean_test` variable.
 
 There are a couple issues with this chart. The variable labels don't make any senses, and they aren't ordered correctly. For the first problem we can solve it using some data cleaning. To solve the second problem, we're going to convert the variable to a factor, which can be ordered. 
 
@@ -226,7 +216,7 @@ I want to point out that the y axis tick labels need some work. We need to add a
 
 ggplot(data = median_test,
        mapping = aes(x = clean_test, y = median_budget, fill = clean_test)) +
-  geom_bar(stat = "identity") + #identity tells geom_bar to use y value
+  geom_bar(stat = "identity") + 
   coord_flip() +
   scale_fill_manual(
     values = c("#ff2700", "#ff9380", "#ffc9bf", "#6bb2d5", "#008fd5")) +
@@ -239,9 +229,9 @@ ggplot(data = median_test,
   theme(
     plot.title = element_text(hjust = 0.5),
     plot.subtitle = element_text(hjust = 0.5),
-    text = element_text(size = 16, # Font size and face 
+    text = element_text(size = 16, 
                         face = "bold"),
-    axis.title.y = element_blank(), #Removing axis labels 
+    axis.title.y = element_blank(), 
     axis.title.x = element_blank(),
     legend.position = "none"
   )
@@ -291,6 +281,7 @@ movies_filtered <- movies_ext |>
   group_by(genre, binary) |> #grouping the data 
   count() |> 
   mutate(genre = str_to_title(genre)) #Capitalizing the first letter of genre
+
 
 # Ggplot! 
 ggplot(data = movies_filtered, aes(
@@ -433,6 +424,7 @@ ggplot(test_genre, mapping = aes(x = clean_test, y = genre)) +
 
 ### Continuous Continuous 
 
+Using a correlation plot we can quickly see how continuous variables are co-vary with each other. A score of 1 means that they positively correlate with each other, and a score of 0 means that they are not related at all. 
 
 ```{r corrplot}
 
@@ -458,6 +450,7 @@ ggcorrplot(corr, method = "circle") +
 
 ```
 
+It's also super helpful to look at how important variables vary overtime. 
 
 ```{r budget_overtime}
 
@@ -488,7 +481,7 @@ ggplot(budget_overtime, aes(y=budget_total, x = year, color = binary)) +
   
 ```
 
-
+A big reason why directors say gender equity is so bad is because they think people don't want to see movies with strong female roles, and thus make less profit.  
 
 ```{r profit_overtime}
 
@@ -519,7 +512,7 @@ ggplot(profit_overtime, aes(y=dom_gross_total, x = year, color = binary)) +
 
 ```
 
-
+Lets test out that assumption ! 
 ```{r covariation_wack}
 
 ggplot(data = movies_cleaned) +
