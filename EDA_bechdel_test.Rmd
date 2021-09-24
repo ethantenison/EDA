@@ -1,0 +1,560 @@
+---
+title: "Exploratory Data Analysis"
+subtitle: "Analyzing the Bechdel Test"
+author: "Ethan Tenison"
+date: "9/22/2021"
+output: html_document
+---
+
+Secuence of events:
+EDA! and a breakdown about what we're going to talk about 
+My background
+Basics of Eda
+TIDY DATA VOCAB
+TidyTuesday
+Bechdel Test
+Rmarkdown
+Datatypes
+
+# TidyTuesday 
+
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday/blob/master/README.md) is weekly social data project aimed at the R ecosystem. This project was borne out of the R4DS Online Learning Community and the R for Data Science textbook, and an emphasis is placed on understanding how to summarize and arrange data to make meaningful charts with ggplot2, tidyr, dplyr, and other tools in the tidyverse ecosystem. 
+
+
+# The Bechdel Test 
+
+The Bechdel test is a measure of the representation of women in fiction, and it is specifically to address gender bias in film. It asks whether a work features at least two women who talk to each other about something other than a man.
+
+>
+Audiences and creators know that on one level or another, there’s an inherent gender bias in the movie business — whether it’s the disproportionately low number of films with female leads, the process of pigeonholing actresses into predefined roles (action chick, romantic interest, middle-aged mother, etc.), or the lack of serious character development for women on screen compared to their male counterparts. What’s challenging is quantifying this dysfunction, putting numbers to a trend that is — at least anecdotally — a pretty clear reality.
+>
+
+
+
+# Setup 
+
+```{r setup}
+
+#Install all required packages 
+#install.packages(c('tidyverse','tidytuesdayR', 'scales'))
+
+#Read in required packages 
+library(tidyverse)    #A collection of packages that use the same grammar and structure
+library(tidytuesdayR) #Download TidyTuesday directly using this api! 
+library(scales)       #To format your axes better 
+library(ggcorrplot)
+
+
+#Setting the global options for Rmarkdown 
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Reading the Data 
+
+
+```{r reading_data}
+
+#Download from TidyTuesday
+tuesdata <- tidytuesdayR::tt_load('2021-03-09')
+
+#Select the movies dataframe within the downloaded list
+movies <- tuesdata$movies
+
+```
+
+# Quick and Easy EDA
+
+The dataset includes about 1,800 movies assessed using 34 different variables including Bechdel rating, budget, gross profit, year of the film, plot, and genre. Using the `glimpse` function we can quickly get a breakdown of the different variables contained in the dataset along with datatype, which is essential to know for any analysis. 
+
+```{r quick_overview}
+
+glimpse(movies)
+
+```
+
+The `summary` function can be used to get quick summary statistics about a dataframe. It works best when assessing the summary statistics of numeric and factor data types. Apart from min, mean, and max, another really important statistic to look at is the number of NA values. This can be crucial to understand because often time you many need to filter these observations out, as many function will break if they're included. In this case, only a small fraction of movies contain NA values, approximately `r (200/1800)*100`%, so although we always want to make a note of this, it's safe to assume they won't drastically skew our results. 
+
+```{r summary}
+
+#Filtering our the characters variables 
+movies_numeric <- movies |> 
+  select(where(is.numeric))
+
+#Quick and easy summary statistics from numeric variables 
+summary(movies_numeric)
+```
+
+
+# Visualizing Distributions
+
+One of the most important things to understand about your data from EDA is the variation of your variables. 
+
+>
+Variation is the tendency of the values of a variable to change from measurement to measurement. You can see variation easily in real life; if you measure any continuous variable twice, you will get two different results. This is true even if you measure quantities that are constant, like the speed of light. Each of your measurements will include a small amount of error that varies from measurement to measurement. Categorical variables can also vary if you measure across different subjects (e.g. the Bechdel rating of movies), or different times (e.g. the average rating over the years).
+>
+
+How you visualize your data depends on whether it is categorical or continuous. A categorical variable is one in which observations only contain a small set of values. In R, categorical variables are either saved as characters or factors. They can be used interchangeably most of the time. Although, character variables are more general, whereas factor variables are used for specific purposes. Crucially, how you clean and manipulate character and factor variables is different. 
+
+To examine the distribution of categorical variables use a bar chart:
+
+```{r binary}
+
+ggplot(data = movies) +
+  geom_bar(mapping = aes(x = binary))
+
+```
+
+Now let's make it a little more viewer friendly 
+
+```{r binary_improved}
+
+#Setting the Basic Theme 
+theme_set(theme_minimal()) 
+
+ggplot(data = movies) +
+  geom_bar(mapping = aes(x = binary, fill = binary)) +
+  labs(x = "Bechdel Test",
+       y = "Number of Movies",
+       title = "Bechdel Test Results (1970-2013)") +
+  theme(
+    plot.title = element_text(hjust = 0.5), # Title Position
+    text = element_text(size = 16, # Font size and face 
+                        face = "bold"),
+    axis.title.y = element_text( #Axis label margins 
+      margin = margin(t = 0,r = 10,b = 0,l = 0)),
+    axis.title.x = element_text( #Axis label margins
+      margin = margin(t = 10,r = 0,b = 0,l = 0))
+  )
+
+```
+
+
+It's your turn! Select a categorical variable (in this case your only option are character variables).
+
+```{r your_turn}
+
+
+#ggplot(data = movies) +
+#  geom_bar(mapping = aes(x = "Insert a column name here"))
+
+
+```
+
+Now lets look at a full breakdown of the Bechdel Test results in the `clean_test` variable.
+
+There are a couple issues with this chart. The variable labels don't make any senses, and they aren't ordered correctly. For the first problem we can solve it using some data cleaning. To solve the second problem, we're going to convert the variable to a factor, which can be ordered. 
+
+
+```{r cleaned_data}
+
+movies_cleaned <- movies |>
+  mutate(
+     # Changing the wording of values
+     # adding '\n' breaks the text onto the next line. 
+    clean_test = case_when( 
+      clean_test == "dubious" ~ "Barely Passed",
+      clean_test == "ok" ~ "Passed",
+      clean_test == "nowomen" ~ "Fewer than\n two women",
+      clean_test == "notalk" ~ "Women don't talk\n to each other",
+      clean_test == "men" ~ "Women only talk\n about men",
+      TRUE ~ clean_test
+    ),
+    # Changing variable to factor and assigning levels 
+    clean_test = factor(clean_test, levels = c(
+      "Fewer than\n two women",
+      "Women don't talk\n to each other",
+      "Women only talk\n about men",
+      "Barely Passed",
+      "Passed"
+    )) 
+  )
+
+ggplot(data = movies_cleaned) +
+  geom_bar(mapping = aes(x = clean_test, fill = clean_test)) +
+  coord_flip() +
+  scale_fill_manual( # Adding a manual color palette!
+    values = c("#ff2700", "#ff9380", "#ffc9bf", "#6bb2d5", "#008fd5")) +
+  labs(x = "Bechdel Test",
+       y = "Number of Movies",
+       title = "Bechdel Test Results (1970-2013)") +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    text = element_text(size = 16, # Font size and face 
+                        face = "bold"),
+    axis.title.y = element_blank(), # Removing axis labels 
+    axis.title.x = element_blank(),
+    legend.position = "none" # Removing the legend because we don't need it! 
+  )
+```
+
+Now we know that, from multiple graphs, that a slight majority of movies don't have women that interact with each other in any meaningful way. But what about their budget?
+
+Keep in mind that the variable I selected for budget, `budget_2013`, has been adjusted for inflation. 
+
+```{r median_test}
+
+#Finding the median budget by Bechdel category 
+median_test <- movies_cleaned |> 
+  group_by(clean_test) |> 
+  summarize(median_budget = median(budget_2013))
+
+ggplot(data = median_test,
+       mapping = aes(x = clean_test, y = median_budget, fill = clean_test)) +
+  geom_bar(stat = "identity") + #identity tells geom_bar to use y value
+  coord_flip() +
+  scale_fill_manual(
+    values = c("#ff2700", "#ff9380", "#ffc9bf", "#6bb2d5", "#008fd5")) +
+  labs(x = "Bechdel Test",
+       y = "Number of Movies",
+       title = "Median Movie Budget",
+       subtitle = "By Bechdel Category (1970-2013)") +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    text = element_text(size = 16, # Font size and face 
+                        face = "bold"),
+    axis.title.y = element_blank(), #Removing axis labels 
+    axis.title.x = element_blank(),
+    legend.position = "none"
+  )
+
+```
+I want to point out that the y axis tick labels need some work. We need to add a dollar sign and commas separating the thousands and millions place.
+
+```{r axis_format}
+
+ggplot(data = median_test,
+       mapping = aes(x = clean_test, y = median_budget, fill = clean_test)) +
+  geom_bar(stat = "identity") + #identity tells geom_bar to use y value
+  coord_flip() +
+  scale_fill_manual(
+    values = c("#ff2700", "#ff9380", "#ffc9bf", "#6bb2d5", "#008fd5")) +
+  scale_y_continuous(label = dollar_format(), #adding commas and dollar sign 
+                     breaks = c(10000000,30000000,50000000)) + #reduce number of tick labels 
+  labs(x = "Bechdel Test",
+       y = "Number of Movies",
+       title = "Median Movie Budget",
+       subtitle = "By Bechdel Category (1970-2013)") +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    text = element_text(size = 16, # Font size and face 
+                        face = "bold"),
+    axis.title.y = element_blank(), #Removing axis labels 
+    axis.title.x = element_blank(),
+    legend.position = "none"
+  )
+
+```
+What about genre? Are there major disparities there as well? 
+
+```{r genre_fail}
+
+ggplot(data = movies) +
+  geom_bar(mapping = aes(x = genre))
+
+```
+This is painful to look at! It's sad. If we use the `unique` function we can see that this variable is ultra messy and unsuitable for analysis. In order to make this work, first we have to use functions from the `stringr` package, which is part of the tidyverse, to pull apart the comma separated genre column into its constituent parts. This results in a much wider dataframe. We go from 34 columns, to 51 columns. To create the bar chart we want, we need to collapse the data set using the `pivot_longer` function, and then the `group_by` function to count up how many times different genres passed or failed the test. 
+
+```{r genre_fixed}
+
+#Separating genres into their own columns
+#The value of each variable being a binary variable 0 or 1 
+movies_ext <- movies_cleaned |> 
+  filter(!is.na(genre)) |> 
+  mutate(action = ifelse(str_detect(genre, "Action"), 1, 0)) |> 
+  mutate(adventure = ifelse(str_detect(genre, "Adventure"), 1, 0)) |> 
+  mutate(animation = ifelse(str_detect(genre, "Animation"), 1, 0)) |> 
+  mutate(biography = ifelse(str_detect(genre, "Biography"), 1, 0)) |> 
+  mutate(comedy = ifelse(str_detect(genre, "Comedy"), 1, 0)) |> 
+  mutate(crime = ifelse(str_detect(genre, "Crime"), 1, 0)) |> 
+  mutate(documentary = ifelse(str_detect(genre, "Documentary"), 1, 0)) |> 
+  mutate(drama = ifelse(str_detect(genre, "Drama"), 1, 0)) |> 
+  mutate(family = ifelse(str_detect(genre, "Family"), 1, 0)) |> 
+  mutate(fantasy = ifelse(str_detect(genre, "Fantasy"), 1, 0)) |> 
+  mutate(horror = ifelse(str_detect(genre, "Horror"), 1, 0)) |> 
+  mutate(musical = ifelse(str_detect(genre, "Musical"), 1, 0)) |> 
+  mutate(mystery = ifelse(str_detect(genre, "Mystery"), 1, 0)) |> 
+  mutate(romance = ifelse(str_detect(genre, "Romance"), 1, 0)) |> 
+  mutate(scifi = ifelse(str_detect(genre, "Sci-Fi"), 1, 0)) |> 
+  mutate(thriller = ifelse(str_detect(genre, "Thriller"), 1, 0)) |> 
+  mutate(western = ifelse(str_detect(genre, "Western"), 1, 0))
+
+#Data manipulation 
+movies_filtered <- movies_ext |>
+  select(binary, action:western) |> #selecting only classification and genres
+  pivot_longer(action:western, #Collapsing columns to have genre in one variable
+               names_to = "genre",
+               values_to = "count") |>
+  filter(count != 0) |> 
+  group_by(genre, binary) |> #grouping the data 
+  count() |> 
+  mutate(genre = str_to_title(genre)) #Capitalizing the first letter of genre
+
+# Ggplot! 
+ggplot(data = movies_filtered, aes(
+  x = n,
+  y = reorder(genre, n), #Here we're reordering the bars by the n of cases 
+  fill = binary
+)) +
+  geom_bar(stat = "identity") + 
+  labs(title = "Bechdel Test",
+       subtitle = "By Genre") +
+  scale_fill_manual(
+    values = c("#ff9380", "#6bb2d5")) +
+  labs(fill = "Bechdel Test") +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    text = element_text(size = 16, # Font size and face 
+                        face = "bold"),
+    axis.title.y = element_blank(), #Removing axis labels 
+    axis.title.x = element_blank()
+  )
+
+```
+
+# Continuous Variables 
+
+A great way to explore continuous variables, in this case doubles, is to use histograms. They look almost identity to bar charts, except we use a different geom 
+
+```{r continuous}
+#Turns of scinetific notation for large numbers 
+#options(scipen=999)
+
+ggplot(movies, aes(x = budget_2013, fill = binary)) +
+  geom_histogram() +
+  labs(x = "Inflation Adjusted Budget",
+       y = "Count",
+       fill = "Bechdel Test",
+       title = "Movie Budgets",
+       subtitle = "By Bechdel Test Result") +
+  scale_x_continuous(label = dollar_format(), #adding commas and dollar sign 
+                     breaks = c(0, 200000000,400000000)) +
+   scale_fill_manual(
+    values = c("#ff9380", "#6bb2d5")) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    text = element_text(size = 16, # Font size and face 
+                        face = "bold")
+  )
+
+  
+```
+
+Graphs like these are hampered by the fact that you can't see how extreme measures stack up. You can use `coord_cartesian` to limit the x and y axis, effectively zooming in. 
+
+```{r budget_zoom}
+
+ggplot(movies, aes(x = budget_2013, fill = binary)) +
+  geom_histogram() +
+  coord_cartesian(xlim = c(200000000, 500000000),
+                  ylim = c(0,20)) +
+  labs(x = "Inflation Adjusted Budget",
+       y = "Count",
+       fill = "Bechdel Test",
+       title = "Movie Budgets",
+       subtitle = "By Bechdel Test Result") +
+  scale_x_continuous(label = dollar_format(), #adding commas and dollar sign 
+                     breaks = c(0, 200000000,400000000)) +
+   scale_fill_manual(
+    values = c("#ff9380", "#6bb2d5")) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    text = element_text(size = 16, # Font size and face 
+                        face = "bold")
+  )
+  
+```
+
+
+
+# Covariation 
+
+**Covariation** is the tendency for two or more variables to vary together in a related way. 
+
+
+### Continuous and Categorical 
+
+```{r boxplots}
+
+ggplot(data = movies_cleaned,
+       mapping = aes(x = clean_test, y = budget_2013, fill = clean_test)) +
+  geom_boxplot() +
+  coord_flip() +
+  scale_y_continuous(label = dollar_format()) +
+  scale_fill_manual(
+    values = c("#ff2700", "#ff9380", "#ffc9bf", "#6bb2d5", "#008fd5")) +
+  labs(title = "Variation in Bechdel Results",
+       subtitle = "By Movie Budget") +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    text = element_text(size = 12, # Font size and face 
+                        face = "bold"),
+    axis.title.y = element_blank(), #Removing axis labels 
+    axis.title.x = element_blank(),
+    legend.position = "none"
+  )
+```
+
+### Categorical and Categorical 
+
+```{r geom_tile}
+test_genre <- movies_ext |>
+  select(clean_test, action:western) |> #selecting only classification and genres
+  pivot_longer(action:western, #Collapsing columns to have genre in one variable
+               names_to = "genre",
+               values_to = "count") |>
+  filter(count != 0) |> 
+  group_by(clean_test, genre) |> 
+  count() |> 
+  mutate(genre = str_to_title(genre))
+
+
+ggplot(test_genre, mapping = aes(x = clean_test, y = genre)) +
+  geom_tile(mapping = aes(fill = n)) +
+  labs(title = "Variation in Bechdel Results",
+       subtitle = "By Genre",
+       fill = "Number") +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    text = element_text(size = 10, # Font size and face
+                        face = "bold"),
+    axis.title.y = element_blank(),
+    #Removing axis labels
+    axis.title.x = element_blank()
+  )
+```
+
+### Continuous Continuous 
+
+
+```{r corrplot}
+
+numeric_cols <- movies_cleaned |> 
+  mutate(domgross_2013 = as.numeric(domgross_2013)) |> 
+  select(where(is.numeric)) |> 
+  drop_na()
+
+colnames(numeric_cols) <- str_to_title(colnames(numeric_cols))
+colnames(numeric_cols) <- str_replace(colnames(numeric_cols), "_", " ")
+
+corr <- round(cor(numeric_cols), 1)
+
+ggcorrplot(corr, method = "circle") +
+  labs(title = "Correlation Plot") +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    text = element_text(size = 14, # Font size and face 
+                        face = "bold")
+  )
+
+
+```
+
+
+```{r budget_overtime}
+
+
+budget_overtime <- movies_cleaned |>
+  group_by(year, binary) |> 
+  summarize(budget_total = sum(budget_2013))
+
+ggplot(budget_overtime, aes(y=budget_total, x = year, color = binary)) + 
+  geom_line(size = 1) +
+  scale_y_continuous(label = dollar_format()) +
+   scale_color_manual(
+    values = c("#ff9380", "#6bb2d5")) +
+  labs(x = "Inflation Adjusted Budget",
+       y = "Budget Total",
+       color = "Bechdel Test",
+       title = "Movie Budgets",
+       subtitle = "By Year") +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    text = element_text(size = 16, # Font size and face 
+                        face = "bold"),
+    axis.title.y = element_blank(), #Removing axis labels 
+    axis.title.x = element_blank()
+    
+  )
+  
+```
+
+
+
+```{r profit_overtime}
+
+profit_overtime <- movies_cleaned  |>
+  mutate(domgross_2013 = as.numeric(domgross_2013)) |> 
+  filter(!is.na(domgross_2013)) |>
+  group_by(year, binary) |> 
+  summarize(dom_gross_total = sum(domgross_2013))
+
+ggplot(profit_overtime, aes(y=dom_gross_total, x = year, color = binary)) + 
+  geom_line(size = 1) +
+  scale_y_continuous(label = dollar_format()) +
+  scale_color_manual(
+    values = c("#ff9380", "#6bb2d5")) +
+  labs(
+       color = "Bechdel Test",
+       title = "Domestic Movie Gross Profits",
+       subtitle = "By Year") +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    text = element_text(size = 16, # Font size and face 
+                        face = "bold"),
+    axis.title.y = element_blank(), #Removing axis labels 
+    axis.title.x = element_blank()
+  )
+  
+
+```
+
+
+```{r covariation_wack}
+
+ggplot(data = movies_cleaned) +
+  geom_point(mapping = aes(x = budget_2013, y = domgross_2013))
+
+```
+
+```{r trend_line}
+
+two_continuous <- movies_cleaned |>
+  mutate(domgross_2013 = as.numeric(domgross_2013)) |> 
+  filter(!is.na(domgross_2013)) 
+
+ggplot(data = two_continuous,
+       mapping = aes(x = budget_2013, y = domgross_2013)) +
+  geom_point(aes(color = binary)) +
+  scale_color_manual(
+    values = c("#ff9380", "#6bb2d5")) +
+  geom_smooth(color = "black") +
+  scale_y_continuous(label = dollar_format()) +
+  scale_x_continuous(label = dollar_format(),
+                     breaks = c(0, 200000000,400000000)) +
+  labs(x = "Budget",
+       y = "Gross Profit",
+       title = "Movie Budget by Gross Profit",
+       subtitle = "(Inflation Adjusted)") +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    text = element_text(size = 16, # Font size and face 
+                        face = "bold"),
+    legend.title = element_blank()
+  )
+
+```
+
+
+
