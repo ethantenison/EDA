@@ -42,6 +42,7 @@ library(rmarkdown)
 
 #Setting the global options for Rmarkdown 
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
 ```
 
 
