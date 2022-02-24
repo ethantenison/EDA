@@ -64,8 +64,6 @@ The dataset includes about 1,800 movies assessed using 34 different variables in
 
 ```{r quick_overview}
 
-glimpse(movies)
-
 ```
 
 # Quick Summary 
@@ -97,8 +95,7 @@ To examine the distribution of categorical variables use a bar chart:
 
 ```{r binary}
 
-ggplot(data = movies, aes(x = binary)) +
-  geom_bar()
+
 
 ```
 
@@ -133,10 +130,6 @@ Now lets look at a full breakdown of the Bechdel Test results in the `clean_test
 
 
 ```{r clean_test}
-
-
-ggplot(data = movies, aes(x = clean_test)) +
-  geom_bar()
 
 
 ```
@@ -249,9 +242,6 @@ ggplot(data = median_test,
 What about genre? Are there major disparities there as well? 
 
 ```{r genre_fail}
-
-ggplot(data = movies, aes(x = genre)) +
-  geom_bar()
 
 ```
 This is painful to look at! It's sad. If we use the `unique` function we can see that this variable is ultra messy and unsuitable for analysis. In order to make this work, first we have to use functions from the `stringr` package, which is part of the tidyverse, to pull apart the comma separated genre column into its constituent parts. This results in a much wider dataframe. We go from 34 columns, to 51 columns. To create the bar chart we want, we need to collapse the data set using the `pivot_longer` function, and then the `group_by` function to count up how many times different genres passed or failed the test. 
@@ -524,8 +514,7 @@ ggplot(profit_overtime, aes(y=dom_gross_total, x = year, color = binary)) +
 Lets test out that assumption ! 
 ```{r covariation_wack}
 
-ggplot(data = movies_cleaned, aes(x = budget_2013, y = domgross_2013)) +
-  geom_point()
+
 
 ```
 
