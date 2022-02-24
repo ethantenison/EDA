@@ -2,7 +2,7 @@
 title: "Exploratory Data Analysis"
 subtitle: "Analyzing the Bechdel Test"
 author: "Ethan Tenison"
-date: "9/22/2021"
+date: "2/22/2022"
 output: html_document
 ---
 
@@ -36,8 +36,7 @@ Audiences and creators know that on one level or another, there’s an inherent 
 library(tidyverse)    #A collection of packages that use the same grammar and structure
 library(tidytuesdayR) #Download TidyTuesday directly using this api! 
 library(scales)       #To format your axes better 
-library(ggcorrplot)
-library(rmarkdown)
+library(ggcorrplot)   #Used to create a correlation plot
 
 
 #Setting the global options for Rmarkdown 
@@ -86,7 +85,7 @@ summary(movies_numeric)
 
 # Visualizing Distributions
 
-One of the most important things to understand about your data from EDA is the variation of your variables. 
+One of the most important things to understand about your data is the variation of your variables. 
 
 >
 Variation is the tendency of the values of a variable to change from measurement to measurement. You can see variation easily in real life; if you measure any continuous variable twice, you will get two different results. This is true even if you measure quantities that are constant, like the speed of light. Each of your measurements will include a small amount of error that varies from measurement to measurement. Categorical variables can also vary if you measure across different subjects (e.g. the Bechdel rating of movies), or different times (e.g. the average rating over the years).
@@ -103,7 +102,7 @@ ggplot(data = movies) +
 
 ```
 
-Now let's make it a little more viewer friendly 
+The majority of movies failed the Bechdel test! Wow! Now let's make it a little more viewer friendly 
 
 ```{r binary_improved}
 
@@ -122,7 +121,16 @@ ggplot(data = movies) +
   )
 
 ```
-Now lets look at a full breakdown of the Bechdel Test results in the `clean_test` variable.
+Now lets look at a full breakdown of the Bechdel Test results in the `clean_test` variable. As a reminder, here are the definitions for the disaggregated variables:
+
+* **Pass**
+    + Ok = Passed
+    + Dubious = Barely Passed
+* **Fail**
+    + men = Women only talk about other men
+    + notalk = Women don’t talk to each other at all
+    + nowomen = There are fewer than two women NAMED in the credits 
+
 
 ```{r clean_test}
 
